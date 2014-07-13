@@ -60,7 +60,7 @@ class BayesianOptCV:
 
         self.random_state = random_state
 
-        self.restarts = 50
+        self.restarts = 150
         self.bh_steps = 50
 
 
@@ -609,6 +609,8 @@ class print_info:
 if __name__ == '__main__':
 
     from sklearn.datasets import make_classification
+    from sklearn.grid_search import RandomizedSearchCV
+    import scipy
 
     from sklearn.svm import SVC
     from sklearn.ensemble import RandomForestClassifier
@@ -618,13 +620,24 @@ if __name__ == '__main__':
                                n_clusters_per_class = 4, random_state = 10)
 
     bocv = BayesianOptCV(estimator = SVC, param_bounds={'C' : (0.001, 50), 'gamma' : (0.0005, 1)},\
-                         param_list = {'kernel' : ['rbf', 'linear']},\
+                         #param_list = {'kernel' : ['rbf', 'linear']},\
                          param_fixed = {'random_state' : 1},\
-                         n_jobs = 3, cv = 3, n_iter = 20,\
+                         n_jobs = 8, cv = 3, n_iter = 50,\
                          gp_params = {'corr' : 'squared_exponential', 'regr' : 'constant'},\
                          acq = 'ei')
 
     #bocv.fit(x, y)
+
+    randcv = RandomizedSearchCV(estimator = SVC(random_state = 1), \
+                                param_distributions = {'C' : scipy.stats.uniform(scale = 50),\
+                                                       'gamma' : scipy.stats.uniform(scale = .1)},\
+                                verbose = 1,\
+                                n_iter=50,\
+                                n_jobs = 8)
+
+    #randcv.fit(x, y)
+    #print(randcv.best_score_)
+    #print(randcv.best_params_)
 
 
     RFcv = BayesianOptCV(estimator = RandomForestClassifier, \
@@ -642,17 +655,35 @@ if __name__ == '__main__':
 
     pt = {'n_estimators' : int, 'min_samples_split' : int, 'min_samples_leaf' : int, 'max_depth' : int}
 
-    pl = param_list = {'max_features' : ['sqrt', 'log2']}
+    pl = {'max_features' : ['sqrt', 'log2']}
+
+    pf = {'verbose' : 0, 'random_state' : 1}
 
     GBcv = BayesianOptCV(estimator = GradientBoostingClassifier, \
                          param_bounds = pb,\
                          param_types = pt,\
                          param_list = pl,\
-                         param_fixed = {'verbose' : 0, 'random_state' : 1},\
+                         param_fixed = pf,\
                          n_jobs = 5, cv = 5, n_iter = 15,\
                          gp_params = {'corr' : 'absolute_exponential', 'regr' : 'constant'},\
                          acq = 'ei')
 
     GBcv.fit(x, y)
 
+    randcv = RandomizedSearchCV(estimator = GradientBoostingClassifier(random_state = 1), \
+                                param_distributions = {'n_estimators' : scipy.stats.randint(low = 1, high = 100),\
+                                                       'subsample' : scipy.stats.uniform(loc = 0.2, scale = 0.799),\
+                                                       'min_samples_split' : scipy.stats.randint(low = 2, high = 50),\
+                                                       'min_samples_leaf' : scipy.stats.randint(low = 1, high = 40),\
+                                                       'learning_rate' : scipy.stats.uniform(loc = 0.01, scale = 0.24),\
+                                                       'max_depth' : scipy.stats.randint(low = 2, high = 10),\
+                                                       'max_features' : ['sqrt', 'log2']},\
+                                verbose = 1,\
+                                cv = 5,
+                                n_iter=32,\
+                                n_jobs = 8)
+
+    randcv.fit(x, y)
+    print(randcv.best_score_)
+    print(randcv.best_params_)
 
